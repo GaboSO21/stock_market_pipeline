@@ -25,7 +25,7 @@ if __name__ == '__main__':
         spark = SparkSession.builder.appName("FormatStock") \
             .config("fs.s3a.access.key", os.getenv("AWS_ACCESS_KEY_ID", "minio")) \
             .config("fs.s3a.secret.key", os.getenv("AWS_SECRET_ACCESS_KEY", "minio123")) \
-            .config("fs.s3a.endpoint", os.getenv("ENDPOINT", "http://host.docker.internal:9000")) \
+            .config("fs.s3a.endpoint", os.getenv("ENDPOINT", "http://minio:9000")) \
             .config("fs.s3a.connection.ssl.enabled", "false") \
             .config("fs.s3a.path.style.access", "true") \
             .config("fs.s3a.attempts.maximum", "1") \
@@ -33,7 +33,7 @@ if __name__ == '__main__':
             .config("fs.s3a.connection.timeout", "10000") \
             .getOrCreate()
 
-        # Read a JSON file from an MinIO bucket using the access key, secret key, 
+        # Read a JSON file from an MinIO bucket using the access key, secret key,
         # and endpoint configured above
         df = spark.read.option("header", "false") \
             .json(f"s3a://{os.getenv('SPARK_APPLICATION_ARGS')}/prices.json")
@@ -43,9 +43,12 @@ if __name__ == '__main__':
             .select("timestamp", "quote.*")
 
         # Zip the arrays
-        df_zipped = df_exploded.select(arrays_zip("timestamp", "close", "high", "low", "open", "volume").alias("zipped"))
-        df_zipped = df_zipped.select(explode("zipped")).select("col.timestamp", "col.close", "col.high", "col.low", "col.open", "col.volume")
-        df_zipped = df_zipped.withColumn('date', from_unixtime('timestamp').cast(DateType()))
+        df_zipped = df_exploded.select(arrays_zip(
+            "timestamp", "close", "high", "low", "open", "volume").alias("zipped"))
+        df_zipped = df_zipped.select(explode("zipped")).select(
+            "col.timestamp", "col.close", "col.high", "col.low", "col.open", "col.volume")
+        df_zipped = df_zipped.withColumn(
+            'date', from_unixtime('timestamp').cast(DateType()))
 
         # Store in Minio
         df_zipped.write \

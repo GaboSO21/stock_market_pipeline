@@ -2,13 +2,13 @@ from airflow.operators.python import PythonOperator
 from airflow.decorators import dag, task
 from airflow.hooks.base import BaseHook
 from airflow.sensors.base import PokeReturnValue
-from airflow.providers.pagerduty.notifications.pagerduty import send_pagerduty_notification
+# from airflow.providers.pagerduty.notifications.pagerduty import send_pagerduty_notification
 from datetime import datetime
 import requests
 
-from include.stock_market.tasks import _get_stock_prices
+from include.stock_market.tasks import _get_stock_prices, _stock_prices
 
-SYMBOL = "APPL"
+SYMBOL = "AAPL"
 
 
 @dag(
@@ -16,18 +16,18 @@ SYMBOL = "APPL"
     schedule='@daily',
     catchup=False,
     tags=['stock_market'],
-    on_success_callback=[
-        send_pagerduty_notification(
-            pagerduty_events_conn_id="pager_duty",
-            summary="The dag {{dag.dag_id}} failed",
-            severity="critical",
-            source="airflow dag_id: {{dag.dag_id}}",
-            dedup_key="{{dag.dag_id}}-{{ti.task_id}}",
-            group="{{dag.dag_id}}",
-            component="airflow",
-            class_type="Prod Data Pipeline"
-        )
-    ]
+    # on_success_callback=[
+    #     send_pagerduty_notification(
+    #         pagerduty_events_conn_id="pager_duty",
+    #         summary="The dag {{dag.dag_id}} failed",
+    #         severity="critical",
+    #         source="airflow dag_id: {{dag.dag_id}}",
+    #         dedup_key="{{dag.dag_id}}-{{ti.task_id}}",
+    #         group="{{dag.dag_id}}",
+    #         component="airflow",
+    #         class_type="Prod Data Pipeline"
+    #     )
+    # ]
 )
 def stock_market():
 
@@ -47,7 +47,14 @@ def stock_market():
             'symbol': SYMBOL}
     )
 
-    is_api_available() >> get_stock_prices
+    stock_prices = PythonOperator(
+        task_id='store_prices',
+        python_callable=_stock_prices,
+        op_kwargs={
+            'stock': '{{task_instance.xcom_pull(task_ids="get_stock_prices")}}'}
+    )
+
+    is_api_available() >> get_stock_prices >> stock_prices
 
 
 stock_market()
