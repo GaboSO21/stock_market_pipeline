@@ -35,27 +35,35 @@ if __name__ == '__main__':
 
         # Read a JSON file from an MinIO bucket using the access key, secret key,
         # and endpoint configured above
-        df = spark.read.option("header", "false") \
-            .json(f"s3a://{os.getenv('SPARK_APPLICATION_ARGS')}/prices.json")
+        df = spark.read.json(
+            f"s3a://stock-market/AAPL/prices.json")
+
+        exploded_df = df.select(explode(df["results"]).alias("result"))
+
+        final_df = exploded_df.select(
+            "result.*"
+        )
+
+        final_df.show()
 
         # Explode the necessary arrays
-        df_exploded = df.select("timestamp", explode("indicators.quote").alias("quote")) \
-            .select("timestamp", "quote.*")
+        # df_exploded = df.select("timestamp", explode("indicators.quote").alias("quote")) \
+        #     .select("timestamp", "quote.*")
 
         # Zip the arrays
-        df_zipped = df_exploded.select(arrays_zip(
-            "timestamp", "close", "high", "low", "open", "volume").alias("zipped"))
-        df_zipped = df_zipped.select(explode("zipped")).select(
-            "col.timestamp", "col.close", "col.high", "col.low", "col.open", "col.volume")
-        df_zipped = df_zipped.withColumn(
-            'date', from_unixtime('timestamp').cast(DateType()))
+        # df_zipped = df_exploded.select(arrays_zip(
+        #     "timestamp", "close", "high", "low", "open", "volume").alias("zipped"))
+        # df_zipped = df_zipped.select(explode("zipped")).select(
+        #     "col.timestamp", "col.close", "col.high", "col.low", "col.open", "col.volume")
+        df_zipped = final_df.withColumn(
+            'date', from_unixtime('t').cast(DateType()))
 
         # Store in Minio
         df_zipped.write \
             .mode("overwrite") \
             .option("header", "true") \
             .option("delimiter", ",") \
-            .csv(f"s3a://{os.getenv('SPARK_APPLICATION_ARGS')}/formatted_prices")
+            .csv(f"s3a://stock-market/AAPL/formatted_prices")
 
     app()
     os.system('kill %d' % os.getpid())
