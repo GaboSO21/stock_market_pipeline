@@ -10,9 +10,9 @@
 # Go to Docker Desktop -> Preferences -> Resources -> Advanced -> Memory
 
 # Import the SparkSession module
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, DataFrame
 from pyspark import SparkContext
-from pyspark.sql.functions import explode, arrays_zip, from_unixtime
+from pyspark.sql.functions import explode, arrays_zip, from_unixtime, col
 from pyspark.sql.types import DateType
 
 import os
@@ -21,8 +21,9 @@ import sys
 if __name__ == '__main__':
 
     def app():
+
         # Create a SparkSession
-        spark = SparkSession.builder.appName("FormatStock") \
+        spark: SparkSession = SparkSession.builder.appName("FormatStock") \
             .config("fs.s3a.access.key", os.getenv("AWS_ACCESS_KEY_ID", "minio")) \
             .config("fs.s3a.secret.key", os.getenv("AWS_SECRET_ACCESS_KEY", "minio123")) \
             .config("fs.s3a.endpoint", os.getenv("ENDPOINT", "http://minio:9000")) \
@@ -40,7 +41,7 @@ if __name__ == '__main__':
 
         exploded_df = df.select(explode(df["results"]).alias("result"))
 
-        final_df = exploded_df.select(
+        final_df: DataFrame = exploded_df.select(
             "result.*"
         )
 
@@ -55,8 +56,8 @@ if __name__ == '__main__':
         #     "timestamp", "close", "high", "low", "open", "volume").alias("zipped"))
         # df_zipped = df_zipped.select(explode("zipped")).select(
         #     "col.timestamp", "col.close", "col.high", "col.low", "col.open", "col.volume")
-        df_zipped = final_df.withColumn(
-            'date', from_unixtime('t').cast(DateType()))
+        df_zipped: DataFrame = final_df.withColumn(
+            'date', from_unixtime("t", "yyyy-MM-dd"))
 
         # Store in Minio
         df_zipped.write \
