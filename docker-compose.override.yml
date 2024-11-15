@@ -4,20 +4,14 @@ services:
   webserver:
     networks:
       - ndsnet
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   scheduler:
     networks:
       - ndsnet
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   triggerer:
     networks:
       - ndsnet
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   minio:
     image: minio/minio:RELEASE.2024-06-13T22-53-53Z
@@ -40,8 +34,6 @@ services:
       retries: 3
     networks:
       - ndsnet
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
   
   spark-master:
     image: airflow/spark-master
@@ -54,8 +46,6 @@ services:
       - INIT_DAEMON_STEP=setup_spark
     networks:
       - ndsnet
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   spark-worker:
     image: airflow/spark-worker
@@ -69,8 +59,6 @@ services:
       - "SPARK_MASTER=spark://spark-master:7077"
     networks:
       - ndsnet
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   metabase:
     image: metabase/metabase:v0.50.4
@@ -81,8 +69,6 @@ services:
       - ./include/data/metabase:/metabase-data
     networks:
       - ndsnet
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   docker-proxy:
     image: alpine/socat
@@ -93,8 +79,17 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - ndsnet
+
+  postgres:
+    image: postgres:14.1-bullseye
+    environment:
+      POSTGRES_PASSWORD: ****
+    ports:
+      - "5433:5432"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+        - ndsnet
 
 networks:
   ndsnet:
