@@ -11,6 +11,7 @@ from datetime import datetime
 import requests
 
 from include.stock_market.tasks import _get_stock_prices, _stock_prices, _get_formatted_csv, BUCKET_NAME
+from include.stock_market.pager_duty import PagerDuty
 
 SYMBOL = "AAPL"
 
@@ -20,23 +21,10 @@ SYMBOL = "AAPL"
     schedule='@daily',
     catchup=False,
     tags=['stock_market'],
-    # Test to see when assigned to None
-    on_success_callback=None
-    #     send_pagerduty_notification(
-    #         pagerduty_events_conn_id="pager_duty",
-    #         summary="The dag {{dag.dag_id}} failed",
-    #         severity="critical",
-    #         source="airflow dag_id: {{dag.dag_id}}",
-    #         dedup_key="{{dag.dag_id}}-{{ti.task_id}}",
-    #         group="{{dag.dag_id}}",
-    #         component="airflow",
-    #         class_type="Prod Data Pipeline"
-    #     )
-    # ]
 )
 def stock_market():
 
-    @task.sensor(poke_interval=30, timeout=300, mode='poke')
+    @task.sensor(poke_interval=30, timeout=300, mode='poke', on_failure_callback=PagerDuty.pager_duty_callback)
     def is_api_available() -> PokeReturnValue:
         api = BaseHook.get_connection("stock_api")
         url = f"{api.host}{api.extra_dejson['apple_endpoint']}?apiKey={api.extra_dejson['api_key']}"

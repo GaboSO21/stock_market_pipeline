@@ -80,17 +80,6 @@ services:
     networks:
       - ndsnet
 
-  postgres:
-    image: postgres:14.1-bullseye
-    environment:
-      POSTGRES_PASSWORD: ****
-    ports:
-      - "5433:5432"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-        - ndsnet
-
 networks:
   ndsnet:
     driver: bridge
